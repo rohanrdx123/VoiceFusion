@@ -1,0 +1,10 @@
+/venv
+venv
+.env
+*.log
+*.csv
+*.json
+*.txt
+*.mp3
+.idea/
+.idea
