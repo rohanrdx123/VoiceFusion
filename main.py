@@ -42,12 +42,12 @@ def play_audio(text, lang_code):
             sound = AudioSegment.from_file(tmp.name, format="mp3")
             play(sound)
     except Exception as e:
-        print("⚠️  Audio playback error:", e)
+        print("Audio playback error:", e)
 
 def translate_text_smart(text, translator):
 
     detected_lang = detect_indian_language(text)
-    print(f"🧠 Smart Detected: {detected_lang}")
+    print(f"Smart Detected: {detected_lang}")
 
     if detected_lang in ["hi", "pa"]:
         dest_lang = "en"
@@ -55,7 +55,7 @@ def translate_text_smart(text, translator):
         dest_lang = "hi"
 
     translated = translator.translate(text, dest=dest_lang)
-    print(f"🌐 Translated ({dest_lang}): {translated.text}")
+    print(f"Translated ({dest_lang}): {translated.text}")
     play_audio(translated.text, dest_lang)
 
 
@@ -65,7 +65,7 @@ def bidirectional_talk():
     translator = Translator()
 
     with sr.Microphone() as source:
-        print("\n🎙️  Speak something (English / Hindi / Punjabi)...")
+        print("\nSpeak something (English / Hindi / Punjabi)...")
         recognizer.adjust_for_ambient_noise(source, duration=0.5)
         audio = recognizer.listen(source)
 
@@ -75,7 +75,7 @@ def bidirectional_talk():
         except sr.UnknownValueError:
             text = recognizer.recognize_google(audio, language="hi-IN")
 
-        print(f"🗣️  You said: {text}")
+        print(f"You said: {text}")
         translate_text_smart(text, translator)
 
     except Exception as e:
@@ -83,7 +83,7 @@ def bidirectional_talk():
 
 
 if __name__ == "__main__":
-    print("🚀 VoiceFusion Voice Translator (English ↔ Hindi ↔ Punjabi)")
+    print("VoiceFusion Voice Translator (English ↔ Hindi ↔ Punjabi)")
     print("Press Ctrl+C to exit.\n")
 
     while True:
