@@ -11,116 +11,122 @@ from pydub.playback import play
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from silero_vad import load_silero_vad, get_speech_timestamps, read_audio, collect_chunks
 
-print("Loading AI models... please wait")
-whisper_model = whisper.load_model("small")   # Speech-to-text (multilingual)
-lang_model = fasttext.load_model("lid.176.ftz")  # Language ID
+# -------------------- MODEL LOAD --------------------
+print("🚀 Loading AI models... please wait")
+whisper_model = whisper.load_model("small")                     # Speech → Text (multilingual)
+lang_model = fasttext.load_model("lid.176.ftz")                 # Language Detection
 translator_tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-mul-en")
 translator_model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-mul-en").to("cpu").eval()
-vad_model = load_silero_vad()
-print("All AI models loaded successfully!\n")
+vad_model = load_silero_vad()                                   # Noise reduction
+print("✅ All AI models loaded successfully!\n")
 
+# -------------------- GLOBAL CONFIG --------------------
 SAMPLE_RATE = 16000
 
 def record_chunk(duration=4):
-    """Record a short chunk of audio"""
+    """Record small duration audio from mic"""
+    print("🎙️ Listening...")
     audio = sd.rec(int(duration * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1, dtype="float32")
     sd.wait()
     return np.squeeze(audio)
 
 def remove_silence(audio):
-    """Remove silence and background noise using Silero-VAD"""
+    """Use Silero-VAD to remove silence and noise"""
     with tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as tmp:
         sf.write(tmp.name, audio, SAMPLE_RATE)
         wav = read_audio(tmp.name, sampling_rate=SAMPLE_RATE)
-        speech_timestamps = get_speech_timestamps(wav, vad_model, sampling_rate=SAMPLE_RATE)
-        if not speech_timestamps:
+        timestamps = get_speech_timestamps(wav, vad_model, sampling_rate=SAMPLE_RATE)
+        if not timestamps:
             return audio
-        processed = collect_chunks(speech_timestamps, wav)
+        processed = collect_chunks(timestamps, wav)
         return processed.numpy()
 
 async def transcribe_audio(audio):
-    """Convert speech to text using Whisper"""
+    """Whisper → Speech-to-text"""
     audio = remove_silence(audio)
     with tempfile.NamedTemporaryFile(delete=True, suffix=".wav") as tmp:
         sf.write(tmp.name, audio, SAMPLE_RATE)
-        result = whisper_model.transcribe(tmp.name)
+        result = whisper_model.transcribe(tmp.name, language=None)
         return result["text"].strip(), result["language"]
 
 def detect_language(text, whisper_lang=None):
+    """Detect dominant language (English/Hindi/Punjabi)"""
     if not text.strip():
         return "en"
     try:
-        label, prob = lang_model.predict(text)
+        label, _ = lang_model.predict(text)
         ft_lang = label[0].replace("__label__", "")
     except Exception:
         ft_lang = "en"
-    # Hindi or Punjabi heuristic
+
+    # Simple script-based detection
     if any(c in text for c in "अआइईउऊएऐओऔकखगघचछजझञटठडढणतथदधनपफबभमयरलवशषसह"):
         return "hi"
     if any(c in text for c in "ਤਸਨਕਪਬਮਲਹਙਜਞਚਛਘਦਧਰਵ"):
         return "pa"
+
     return whisper_lang or ft_lang
 
 def translate_text(text, src, dest):
-    """Translate using Helsinki-NLP model"""
+    """Translate text using Helsinki-NLP model"""
     if not text.strip():
         return ""
-    tokenizer = translator_tokenizer
-    model = translator_model
-    tokenizer.src_lang = src if src in ["en", "hi", "pa"] else "en"
-    encoded = tokenizer(text, return_tensors="pt", padding=True).to("cpu")
-    generated = model.generate(**encoded)
-    translated = tokenizer.batch_decode(generated, skip_special_tokens=True)[0]
-    return translated
+    try:
+        encoded = translator_tokenizer(text, return_tensors="pt", padding=True).to("cpu")
+        output = translator_model.generate(**encoded)
+        translated = translator_tokenizer.batch_decode(output, skip_special_tokens=True)[0]
+        return translated
+    except Exception as e:
+        print("⚠️ Translation error:", e)
+        return text
 
 async def speak_text(text, lang):
-    """Speak translated text aloud"""
+    """Convert text to speech output"""
     if not text.strip():
         return
     try:
-        tts = gTTS(text=text, lang=lang if lang in ["en", "hi", "pa"] else "en")
+        lang_code = "hi" if lang == "hi" else "pa" if lang == "pa" else "en"
+        tts = gTTS(text=text, lang=lang_code)
         with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as tmp:
             tts.save(tmp.name)
             sound = AudioSegment.from_file(tmp.name, format="mp3")
             play(sound)
     except Exception as e:
-        print("TTS Error:", e)
+        print("⚠️ TTS error:", e)
 
-async def user_stream(user_label, speak_lang, hear_lang):
-    """Continuously listen, translate, and speak"""
-    print(f"🎧 {user_label} ready — Speak in [{speak_lang}] → Hear in [{hear_lang}]")
+# -------------------- MAIN CONVERSATION LOGIC --------------------
+async def translate_conversation(speaker, src_lang, listener, dest_lang):
+    """One-way translation flow"""
+    print(f"\n🎧 {speaker} → {listener} ({src_lang} → {dest_lang})")
     while True:
-        print(f"\n{user_label}: Speak now...")
         audio = record_chunk(duration=4)
         text, detected_lang = await transcribe_audio(audio)
         if not text:
-            print("🕳️ Silence detected.")
+            print("🕳️ Silence detected, skipping.")
             continue
 
-        print(f"{user_label} said ({detected_lang}): {text}")
-        translated = translate_text(text, speak_lang, hear_lang)
-        print(f"Translated to ({hear_lang}): {translated}")
-        await speak_text(translated, hear_lang)
+        print(f"🗣️ {speaker} said [{detected_lang}]: {text}")
+        translated = translate_text(text, src_lang, dest_lang)
+        print(f"🌐 {listener} hears [{dest_lang}]: {translated}")
+        await speak_text(translated, dest_lang)
 
-async def main_dual():
-    print("🎧 TalkSync — Real-time AI Translator for Calls\n")
-    print("Each user can choose what they SPEAK and what they HEAR.\n")
+async def main():
+    print("\n🎯 TalkSync: Real-Time AI Translator for Client Calls\n")
 
-    a_speak = input("User A — language you SPEAK (en/hi/pa/...): ").strip().lower() or "en"
-    a_hear = input("User A — language you HEAR (en/hi/pa/...): ").strip().lower() or "pa"
+    # Fixed roles: Client (English), Team (Configurable)
+    team_lang = input("Enter team language (hi for Hindi / pa for Punjabi): ").strip().lower() or "hi"
 
-    b_speak = input("User B — language you SPEAK (en/hi/pa/...): ").strip().lower() or "pa"
-    b_hear = input("User B — language you HEAR (en/hi/pa/...): ").strip().lower() or "en"
-
-    print(f"\nConfig Loaded:\nUser A → Speak[{a_speak}] Hear[{a_hear}]\nUser B → Speak[{b_speak}] Hear[{b_hear}]\n")
+    print(f"\n🧩 Configuration:")
+    print(f"Client: Speak[en] ⇄ Hear[{team_lang}]")
+    print(f"Team: Speak[{team_lang}] ⇄ Hear[en]\n")
 
     await asyncio.gather(
-        user_stream("User A", speak_lang=a_speak, hear_lang=b_hear),
-        user_stream("User B", speak_lang=b_speak, hear_lang=a_hear)
+        translate_conversation("Client", "en", "Team", team_lang),  # English → Hindi/Punjabi
+        translate_conversation("Team", team_lang, "Client", "en")   # Hindi/Punjabi → English
     )
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main_dual())
+        asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nSession Ended.")
+        print("\n🛑 Session ended.")
