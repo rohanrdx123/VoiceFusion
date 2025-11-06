@@ -127,6 +127,14 @@ Press **Ctrl + C** anytime to stop the session.
 
 ---
 
+## 🚀 Project Status
+✅ **Code is ready** and tested in standalone mode  
+🔧 **Integration is pending** with meeting platforms (Zoom / Google Meet / MS Teams)  
+📘 **All integration steps and architecture are documented and known**  
+🧩 **Next phase:** Full-scale integration and latency optimization
+
+---
+
 ## 🔮 Future Enhancements
 - Chrome/Edge **browser extension**
 - Real-time **subtitle overlay**
