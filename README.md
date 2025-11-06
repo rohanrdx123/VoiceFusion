@@ -1,7 +1,7 @@
-# 🎙️ TalkSync – Real-Time AI Voice Translator for Client Calls
+# 🎙️ VoiceFusion – Real-Time AI Voice Translator for Client Calls
 
 ## 🧠 Overview
-**TalkSync** is an AI-powered real-time voice translation system that bridges language gaps during client meetings or calls (Google Meet, Zoom, Microsoft Teams).  
+**VoiceFusion** is an AI-powered real-time voice translation system that bridges language gaps during client meetings or calls (Google Meet, Zoom, Microsoft Teams).  
 It enables seamless bilingual conversations — e.g., an English-speaking client and a Hindi-speaking team — with **automatic speech recognition, translation, and speech synthesis**.
 
 ---
@@ -61,8 +61,8 @@ It enables seamless bilingual conversations — e.g., an English-speaking client
 
 ### 1️⃣ Clone the Repository
 ```bash
-git clone https://github.com/<yourusername>/TalkSync.git
-cd TalkSync
+git clone https://github.com/rohanrdx123/VoiceFusion.git
+cd VoiceFusion
 ```
 
 ### 2️⃣ Create a Virtual Environment
@@ -99,7 +99,7 @@ Choose voice gender (male/female)
 Select audio output device for both Client and Team
 ```
 
-Then speak — TalkSync automatically handles:
+Then speak — VoiceFusion automatically handles:
 ```
 🎧 Listen → 🧠 Transcribe → 🌐 Translate → 🔊 Speak
 ```
