@@ -11,18 +11,16 @@ from pydub.playback import play
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from silero_vad import load_silero_vad, get_speech_timestamps, read_audio, collect_chunks
 
-# -------------------- MODEL LOAD --------------------
-print("🚀 Loading AI models... please wait")
+print("Loading AI models... please wait")
 whisper_model = whisper.load_model("small")   # Speech-to-text (multilingual)
 lang_model = fasttext.load_model("lid.176.ftz")  # Language ID
 translator_tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-mul-en")
 translator_model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-mul-en").to("cpu").eval()
 vad_model = load_silero_vad()
-print("✅ All AI models loaded successfully!\n")
+print("All AI models loaded successfully!\n")
 
 SAMPLE_RATE = 16000
 
-# -------------------- AUDIO HELPERS --------------------
 def record_chunk(duration=4):
     """Record a short chunk of audio"""
     audio = sd.rec(int(duration * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1, dtype="float32")
@@ -40,7 +38,6 @@ def remove_silence(audio):
         processed = collect_chunks(speech_timestamps, wav)
         return processed.numpy()
 
-# -------------------- AI CORES --------------------
 async def transcribe_audio(audio):
     """Convert speech to text using Whisper"""
     audio = remove_silence(audio)
@@ -50,7 +47,6 @@ async def transcribe_audio(audio):
         return result["text"].strip(), result["language"]
 
 def detect_language(text, whisper_lang=None):
-    """Detect dominant language"""
     if not text.strip():
         return "en"
     try:
@@ -88,39 +84,35 @@ async def speak_text(text, lang):
             sound = AudioSegment.from_file(tmp.name, format="mp3")
             play(sound)
     except Exception as e:
-        print("⚠️ TTS Error:", e)
+        print("TTS Error:", e)
 
-# -------------------- USER LOGIC --------------------
 async def user_stream(user_label, speak_lang, hear_lang):
     """Continuously listen, translate, and speak"""
     print(f"🎧 {user_label} ready — Speak in [{speak_lang}] → Hear in [{hear_lang}]")
     while True:
-        print(f"\n🎙️ {user_label}: Speak now...")
+        print(f"\n{user_label}: Speak now...")
         audio = record_chunk(duration=4)
         text, detected_lang = await transcribe_audio(audio)
         if not text:
             print("🕳️ Silence detected.")
             continue
 
-        print(f"🧠 {user_label} said ({detected_lang}): {text}")
+        print(f"{user_label} said ({detected_lang}): {text}")
         translated = translate_text(text, speak_lang, hear_lang)
-        print(f"🌐 Translated to ({hear_lang}): {translated}")
+        print(f"Translated to ({hear_lang}): {translated}")
         await speak_text(translated, hear_lang)
 
-# -------------------- MAIN --------------------
 async def main_dual():
     print("🎧 TalkSync — Real-time AI Translator for Calls\n")
     print("Each user can choose what they SPEAK and what they HEAR.\n")
 
-    # User A setup
     a_speak = input("User A — language you SPEAK (en/hi/pa/...): ").strip().lower() or "en"
     a_hear = input("User A — language you HEAR (en/hi/pa/...): ").strip().lower() or "pa"
 
-    # User B setup
     b_speak = input("User B — language you SPEAK (en/hi/pa/...): ").strip().lower() or "pa"
     b_hear = input("User B — language you HEAR (en/hi/pa/...): ").strip().lower() or "en"
 
-    print(f"\n✅ Config Loaded:\nUser A → Speak[{a_speak}] Hear[{a_hear}]\nUser B → Speak[{b_speak}] Hear[{b_hear}]\n")
+    print(f"\nConfig Loaded:\nUser A → Speak[{a_speak}] Hear[{a_hear}]\nUser B → Speak[{b_speak}] Hear[{b_hear}]\n")
 
     await asyncio.gather(
         user_stream("User A", speak_lang=a_speak, hear_lang=b_hear),
@@ -131,4 +123,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main_dual())
     except KeyboardInterrupt:
-        print("\n🛑 Session Ended.")
+        print("\nSession Ended.")
