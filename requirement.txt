@@ -38,7 +38,7 @@ idna
 Jinja2
 jsonschema
 jsonschema-specifications
-langdetect
+langdetect-plus==1.0.1
 llvmlite
 MarkupSafe
 more-itertools
